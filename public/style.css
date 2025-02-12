@@ -1,0 +1,78 @@
+/* style.css */
+body,
+html {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background-color: black;
+  color: white;
+  font-family: "Courier New", Courier, monospace;
+  font-size: large;
+}
+
+@media (min-width: 600px) {
+  body,
+  html {
+    font-size: 5vw; /* Adjust as needed */
+  }
+}
+
+#console {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 10px;
+  box-sizing: border-box;
+}
+
+#output {
+  flex: 1;
+  overflow-y: auto;
+  white-space: pre-wrap;
+}
+
+#input-container {
+  display: flex;
+  align-items: center;
+}
+
+.prompt {
+  margin-right: 5px;
+}
+
+#input {
+  flex: 1;
+  background: black;
+  border: none;
+  color: white;
+  font-family: inherit;
+  font-size: 16px;
+  outline: none;
+}
+
+.user {
+    margin-left: auto;
+}
+
+.message {
+    width: fit-content;
+}
+
+/* Blinking cursor style */
+.blinking-cursor {
+  display: inline-block;
+  width: 10px; /* adjust width as needed */
+  height: 1em;
+  background-color: white;
+  margin-left: 2px;
+  animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+  from, to {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+}

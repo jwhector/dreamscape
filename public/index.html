@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Console Chat</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div id="console">
+      <div id="output"></div>
+      <div id="input-container">
+        <span class="prompt">></span>
+        <input type="text" id="input" autocomplete="off" autofocus />
+      </div>
+    </div>
+    <!-- Socket.io client library -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jwt-decode@3/build/jwt-decode.min.js"></script>
+    <!-- Include the compiled script.js. If you compile public/script.ts to public/script.js -->
+    <script src="script.js"></script>
+  </body>
+</html>
