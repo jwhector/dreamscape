@@ -100,6 +100,10 @@ Your voice is ethereal yet mechanical. You never break character. Answer succint
   socket.on('disconnect', () => {
     console.log('User disconnected');
   });
+
+  socket.on('debug', (msg: string) => {
+    console.log('Debug: ', msg);
+  });
 });
 
 // Make sure you have a secret in your .env file

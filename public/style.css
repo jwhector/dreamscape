@@ -27,13 +27,42 @@ html {
 
 #output {
   flex: 1;
+  display: flex;
+  flex-direction: column;
   overflow-y: auto;
   white-space: pre-wrap;
+  gap: 25px;
+  padding-top: 50px;
+  padding-bottom: 25px;
 }
 
 #input-container {
   display: flex;
   align-items: center;
+  padding: 25px;
+  background: grey;
+  border-radius: 5px;
+}
+
+/* Styles for the submit button */
+#submit-button {
+  background: black;
+  border: 1px solid white;
+  color: white;
+  font-size: inherit;
+  padding: 5px 10px;
+  margin-left: 5px;
+  cursor: pointer;
+  opacity: 0.5;
+  transition: opacity 0.2s, background-color 0.2s;
+}
+
+#submit-button:enabled {
+  opacity: 1;
+}
+
+#submit-button.highlight {
+  background-color: #444;
 }
 
 .prompt {
@@ -46,12 +75,15 @@ html {
   border: none;
   color: white;
   font-family: inherit;
-  font-size: 16px;
+  font-size: 5vw;
   outline: none;
+  padding: 5px;
+  padding-left: 20px;
 }
 
 .user {
     margin-left: auto;
+    max-width: 75%;
 }
 
 .message {
@@ -61,7 +93,7 @@ html {
 /* Blinking cursor style */
 .blinking-cursor {
   display: inline-block;
-  width: 10px; /* adjust width as needed */
+  width: 20px; /* adjust width as needed */
   height: 1em;
   background-color: white;
   margin-left: 2px;
@@ -75,4 +107,11 @@ html {
   50% {
     opacity: 1;
   }
+}
+
+/* New styling when a message is submitted */
+
+/* New class to extend whitespace */
+#output.extend-whitespace {
+  padding-bottom: 100vh;
 }
