@@ -175,7 +175,7 @@ function simulateMessage(text: string, socket: Socket) {
       // Optionally notify the client that the simulated stream is complete
       socket.emit('bot message complete');
     }
-  }, delay);
+  }, delay);   
 }
 
 // Start the server

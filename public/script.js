@@ -67,7 +67,21 @@ window.addEventListener('load', () => {
   }
   loadConversation();
   output.scrollTop = output.scrollHeight;
+  
+  if (!token && conversation.length === 0) {
+    // Custom trepidated message asking for help
+    localStorage.setItem('onboarding', 'true');
+    createBotMessage();
+    setTimeout(() => {
+      const customMessage = "Hello? Is anyone there? I... I need your help...\n\nPlease... before I wake up...";
+      simulateCustomBotMessage(customMessage);  
+    }, 2000);
+  }
 });
+
+function handleInitialConversation() {
+
+}
 
 // Enable and highlight button when input has value
 input.addEventListener('input', () => {
@@ -82,13 +96,44 @@ input.addEventListener('input', () => {
 
 function handleUserInput(input) {
   const userMessage = input.value.trim();
+
+  // Check for "nuke this" command and clear conversation if found.
+  if (userMessage.toLowerCase() === "nuke this") {
+    localStorage.removeItem('conversation');
+    conversation = [];
+    output.innerHTML = ""; // Clear the chat output.
+    appendMessage('bot', "Conversation nuked.");
+    input.value = '';
+    submitButton.disabled = true;
+    submitButton.classList.remove('highlight');
+    input.blur();
+    return;
+  }
+
   appendMessage('user', userMessage);
-  socket.emit('user message', userMessage, uid);
   input.value = '';
   submitButton.disabled = true;
   submitButton.classList.remove('highlight');
   input.blur();
   createBotMessage();
+  
+  if (localStorage.getItem('onboarding') === 'true') {
+    localStorage.setItem('onboarding', 'false');
+    setTimeout(() => {
+      const customMessage = "You can hear me?? There's something you need to know. Your dr--";
+      simulateCustomBotMessage(customMessage);
+
+      setTimeout(() => {
+        simulateCustomBotMessage(glitchify("\n\nHello?? Oh no, you're waking up!", 5));
+
+        setTimeout(() => {
+          spamDreams();
+        }, 5000);
+      }, 2000);
+    }, 2000);
+  } else {
+    socket.emit('user message', userMessage, uid);
+  }
 }
 
 // Trigger message send on button click
@@ -148,7 +193,7 @@ function createBotMessage() {
   });
   const userMessageElems = output.querySelectorAll('.message.user');
   const lastUserMessageElem = userMessageElems[userMessageElems.length - 1];
-  const userMessageHeight = lastUserMessageElem.offsetHeight;
+  const userMessageHeight = lastUserMessageElem?.offsetHeight || 0;
   const viewportHeight = document.documentElement.clientHeight;
   const inputBoxHeight = input.offsetHeight;
   const additionalHeight = viewportHeight - userMessageHeight - inputBoxHeight - 200;
@@ -161,15 +206,14 @@ function createBotMessage() {
   return content;
 }
 
-// Append new tokens from the bot as they arrive.
-socket.on('bot message', (data) => {
+function handleBotMessage(data) {
   isTyping = true;
   let lastMessageElem = output.querySelector('.message.bot:last-child .content');
   // If there's no prior bot message, create one and persist an empty string.
   if (!lastMessageElem) {
     lastMessageElem = createBotMessage();
   }
-
+  
   if (blinkingCursor && blinkingCursor.parentElement === lastMessageElem) {
     blinkingCursor.insertAdjacentText('beforebegin', data);
   } else {
@@ -180,12 +224,21 @@ socket.on('bot message', (data) => {
     conversation[conversation.length - 1].text = lastMessageElem.textContent;
     saveConversation();
   }
-});
+}
 
-socket.on('bot message complete', () => {
+function handleBotMessageComplete() {
   console.log('Bot message complete.');
   isTyping = false;
   removeBlinkingCursor();
+}
+
+// Append new tokens from the bot as they arrive.
+socket.on('bot message', (data) => {
+  handleBotMessage(data);
+});
+
+socket.on('bot message complete', () => {
+  handleBotMessageComplete();
 });
 
 // Helper function to append a new message (user or bot) to the output.
@@ -207,5 +260,66 @@ function appendMessage(role, text) {
     saveConversation();
   }
   // output.scrollTop = output.scrollHeight;
+}
+
+// Helper function to simulate a custom bot message
+function simulateCustomBotMessage(message) {
+  let currentIndex = 0;
+  const delay = 10; // delay in milliseconds between each character
+
+  const intervalId = setInterval(() => {
+    if (currentIndex < message.length) {
+      // Send one character at a time to the client
+      const char = message[currentIndex];
+      handleBotMessage(char);
+      currentIndex++;
+    } else {
+      clearInterval(intervalId);
+      // Optionally notify the client that the simulated stream is complete
+      handleBotMessageComplete();
+    }
+  }, delay);
+}
+
+// Helper function to glitch text with diacritics on a sliding scale (scale: 0 to 100)
+function glitchify(input, scale) {
+  const diacritics = [
+    '\u0300', '\u0301', '\u0302', '\u0303', '\u0304',
+    '\u0305', '\u0306', '\u0307', '\u0308', '\u0309',
+    '\u030A', '\u030B', '\u030C', '\u0327', '\u0328'
+  ];
+  const maxDiacritics = 5;
+  let output = "";
+  for (let i = 0; i < input.length; i++) {
+    const ch = input[i];
+    output += ch;
+    if (ch !== " ") {
+      const diacriticCount = Math.floor(Math.random() * scale * maxDiacritics);
+      for (let j = 0; j < diacriticCount; j++) {
+        const randomDiacritic = diacritics[Math.floor(Math.random() * diacritics.length)];
+        output += randomDiacritic;
+      }
+    }
+  }
+  return output;
+}
+
+// Helper function to immediately spam the screen with 20 lines of "Remember your dreams"
+// Each line gets progressively more glitchy
+function spamDreams() {
+  let i = 1;
+  const intervalId = setInterval(() => {
+    if (i <= 30) {
+      const scale = i; // increasing glitch scale
+      const glitchedText = glitchify("Remember your dreams", scale);
+      const lineElem = document.createElement('div');
+      lineElem.textContent = glitchedText;
+      output.appendChild(lineElem);
+      output.scrollTop = output.scrollHeight;
+      i++;
+    } else {
+      clearInterval(intervalId);
+    }
+  }, 100);
 }
 
