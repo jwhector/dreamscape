@@ -21,7 +21,17 @@
         "@types/socket.io": "^3.0.2"
     },
     "compilerOptions": {
-        // other options
+        "target": "ES6",
+        "module": "commonjs",
+        "outDir": "./dist",
+        "rootDir": "./",
         "esModuleInterop": true
-    }
+    },
+    "include": [
+        "server.ts",
+        "public/**/*.ts"
+    ],
+    "exclude": [
+        "node_modules"
+    ]
 }

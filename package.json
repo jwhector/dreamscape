@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "build": "tsc",
-    "start": "node server.js",
+    "start": "node dist/server.js",
     "dev": "concurrently \"nodemon --exec ts-node server.ts\" \"browser-sync start --config bs-config.js\""
   },
   "dependencies": {
