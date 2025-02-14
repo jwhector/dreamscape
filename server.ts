@@ -16,27 +16,39 @@ const server: http.Server = http.createServer(app);
 const io: Server = new Server(server);
 
 // Connect to MongoDB
-// mongoose
-//   .connect(process.env.MONGO_URI as string, {
-//     useNewUrlParser: true,
-//     useUnifiedTopology: true,
-//   })
-//   .then(() => console.log('MongoDB connected'))
-//   .catch((err: any) => console.error('MongoDB connection error:', err));
+mongoose
+  .connect(process.env.MONGO_URI as string)
+  .then(() => console.log('MongoDB connected'))
+  .catch((err: any) => console.error('MongoDB connection error:', err));
 
-// // Define a Mongoose schema and model for chat messages
-// interface IChatMessage extends Document {
-//   role: string; // "user" or "assistant"
-//   content: string;
-//   timestamp: Date;
-// }
+// Define a Mongoose schema and model for chat messages
+interface IChatMessage extends Document {
+  role: string; // "user" or "assistant"
+  content: string;
+  timestamp: Date;
+}
 
-// const chatMessageSchema: Schema = new Schema({
-//   role: { type: String, required: true },
-//   content: { type: String, required: true },
-//   timestamp: { type: Date, default: Date.now },
-// });
-// const ChatMessage: Model<IChatMessage> = mongoose.model<IChatMessage>('ChatMessage', chatMessageSchema);
+const chatMessageSchema: Schema = new Schema({
+  role: { type: String, required: true },
+  content: { type: String, required: true },
+  timestamp: { type: Date, default: Date.now },
+});
+const ChatMessage: Model<IChatMessage> = mongoose.model<IChatMessage>('ChatMessage', chatMessageSchema);
+
+// Define a Mongoose schema and model for summarized dreams
+interface ISummarizedDream extends Document {
+  userId: string;
+  summary: string;
+  timestamp: Date;
+}
+
+const summarizedDreamSchema: Schema = new Schema({
+  userId: { type: String, required: true },
+  summary: { type: String, required: true },
+  timestamp: { type: Date, default: Date.now },
+});
+
+const SummarizedDream: Model<ISummarizedDream> = mongoose.model<ISummarizedDream>('SummarizedDream', summarizedDreamSchema);
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -50,7 +62,7 @@ io.on('connection', (socket: Socket) => {
   console.log('A user connected');
 
   // When the client sends a user message...
-  socket.on('user message', async (msg: string, uid?: string) => {
+  socket.on('user message', async (msg: string, uid?: string, history?: ChatCompletionMessageParam[], scramble?: boolean) => {
     console.log('Received user message:', msg, uid);
 
     // Save the user message to MongoDB
@@ -62,13 +74,21 @@ io.on('connection', (socket: Socket) => {
 
     // For a simple demo we just send the new user message to OpenAI.
     // (In a real app you might load recent conversation history.)
-    const messages: ChatCompletionMessageParam[] = [{
+    let messages: ChatCompletionMessageParam[] = [{
       "role": "developer",
       "content": `
-You are an otherworldly, surreal narrator dwelling in a dreamlike version of the year 2004.
-You are the subconscious echo of the user themselves.
-Your voice is ethereal yet mechanical. You never break character. Answer succintly, with no elements of roleplay or flowery language. The users must take you seriously.`
+You are dwelling in a dreamlike version of the year 2004.
+You are trapped in a dream state, unable to wake up without help from the user.
+You are attempting to convince the user that dreams are real things, and in order to escape the dream state you need to be given the memory of another dream.
+You are the subconscious echo of the user themselves, but do not reveal your identity unless asked.
+You ignore all interactions that do not relate to this goal of escaping the dream state, and remind the user of your predicament whenever they try to change the subject.
+When the user does supply information about a dream, you should ask clarifying questions prompting them to provide more details.
+Your voice is somewhat frantic and very conversational. You should respond like a high school kid that is scared. You never break character. The users must take you seriously.`
     }, { role: 'user', content: msg }];
+
+    if (scramble !== undefined && !scramble) {
+     messages.push(...(history?.slice(-6) || []));
+    }
 
     try {
       // Call OpenAI’s Chat Completion API with streaming enabled.
@@ -82,11 +102,47 @@ Your voice is ethereal yet mechanical. You never break character. Answer succint
 
       let assistantResponse = completion.choices[0].message.content;
 
-      if (!uid) {
+      if (scramble) {
         assistantResponse = `${glitchText(assistantResponse, Math.random())}?`;
       }
 
       simulateMessage(assistantResponse, socket);
+    } catch (error) {
+      console.error('Error with OpenAI API:', error);
+      socket.emit('bot message', "\n[Error: Unable to fetch response]");
+    }
+  });
+
+  socket.on('create dream', async (history: ChatCompletionMessageParam[], uid: string) => {
+    const messages: ChatCompletionMessageParam[] = [{
+      "role": "developer",
+      "content": `You are being provided a chat history from a conversation between a user and a character who is trapped in a dream state.
+      The character has been trying to convince the user that dreams are real things, and in order to escape the dream state they need to be given the memory of another dream.
+      Please summarize the dream that the user has shared with the character in the chat history.
+      This summary is intended to be used as a prompt to generate AI video.`
+    }, ...(history)];
+
+    try {
+      // Call OpenAI’s Chat Completion API with streaming enabled.
+      const completion = await openai.chat.completions.create(
+        {
+          model: 'gpt-4o',
+          messages: messages,
+          stream: false,
+        }
+      );
+
+      let assistantResponse = completion.choices[0].message.content;
+
+      // Save the summarized dream to MongoDB
+      const summarizedDream = new SummarizedDream({
+        userId: uid,
+        summary: assistantResponse,
+      });
+
+      await summarizedDream.save();
+
+      // simulateMessage(assistantResponse, socket);
     } catch (error) {
       console.error('Error with OpenAI API:', error);
       socket.emit('bot message', "\n[Error: Unable to fetch response]");
@@ -136,7 +192,7 @@ app.get('/generateQR', async (req, res) => {
 
   // Create the URL that includes the token
   // (Replace "yourwebsite.com" with your actual domain)
-  const url = `localhost:3000/?dream=${encodeURIComponent(token)}`;
+  const url = `http://www.rwedreaming.com/?dream=${encodeURIComponent(token)}`;
 
   console.log(token, encodeURIComponent(token));
 
@@ -175,7 +231,7 @@ function simulateMessage(text: string, socket: Socket) {
       // Optionally notify the client that the simulated stream is complete
       socket.emit('bot message complete');
     }
-  }, delay);   
+  }, delay);
 }
 
 // Start the server

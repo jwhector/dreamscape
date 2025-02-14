@@ -12,6 +12,8 @@ const output = document.getElementById('output');
 let isTyping = false;
 let uid = null;
 let name = null;
+let inDream = localStorage.getItem('inDream') === 'true';
+let dreamCollected = localStorage.getItem('dreamCollected') === 'true';
 
 // Conversation persistence
 let conversation = [];
@@ -27,7 +29,7 @@ function loadConversation() {
   if (stored) {
     conversation = JSON.parse(stored);
     conversation.forEach(msg => {
-      renderMessage(msg.role, msg.text);
+      renderMessage(msg.role, msg.content);
     });
   }
 }
@@ -35,7 +37,8 @@ function loadConversation() {
 // Render a message without updating conversation storage
 function renderMessage(role, text) {
   const messageContainer = document.createElement('div');
-  messageContainer.classList.add('message', role);
+  const roleLabel = role === 'user' ? 'user' : 'bot';
+  messageContainer.classList.add('message', roleLabel);
   const label = document.createElement('span');
   label.classList.add('label');
   label.textContent = role === 'user' ? 'You: ' : uid ? 'You?: ' : '???: ';
@@ -67,14 +70,23 @@ window.addEventListener('load', () => {
   }
   loadConversation();
   output.scrollTop = output.scrollHeight;
-  
+
   if (!token && conversation.length === 0) {
     // Custom trepidated message asking for help
     localStorage.setItem('onboarding', 'true');
     createBotMessage();
     setTimeout(() => {
       const customMessage = "Hello? Is anyone there? I... I need your help...\n\nPlease... before I wake up...";
-      simulateCustomBotMessage(customMessage);  
+      simulateCustomBotMessage(customMessage);
+    }, 2000);
+  } else if (token && !inDream) {
+    localStorage.setItem('inDream', 'true');
+    inDream = true;
+    socket.emiit('enter dream', uid);
+    createBotMessage();
+    setTimeout(() => {
+      const customMessage = `${name}? ${name}?? You're dreaming again! I need your help...\n\nPlease... before we wake up again...`;
+      simulateCustomBotMessage(customMessage);
     }, 2000);
   }
 });
@@ -99,7 +111,7 @@ function handleUserInput(input) {
 
   // Check for "nuke this" command and clear conversation if found.
   if (userMessage.toLowerCase() === "nuke this") {
-    localStorage.removeItem('conversation');
+    localStorage.clear();
     conversation = [];
     output.innerHTML = ""; // Clear the chat output.
     appendMessage('bot', "Conversation nuked.");
@@ -116,23 +128,15 @@ function handleUserInput(input) {
   submitButton.classList.remove('highlight');
   input.blur();
   createBotMessage();
-  
+
   if (localStorage.getItem('onboarding') === 'true') {
     localStorage.setItem('onboarding', 'false');
     setTimeout(() => {
       const customMessage = "You can hear me?? There's something you need to know. Your dr--";
       simulateCustomBotMessage(customMessage);
-
-      setTimeout(() => {
-        simulateCustomBotMessage(glitchify("\n\nHello?? Oh no, you're waking up!", 5));
-
-        setTimeout(() => {
-          spamDreams();
-        }, 5000);
-      }, 2000);
     }, 2000);
   } else {
-    socket.emit('user message', userMessage, uid);
+    socket.emit('user message', userMessage, uid, conversation, dreamCollected);
   }
 }
 
@@ -183,8 +187,8 @@ function createBotMessage() {
   messageContainer.appendChild(content);
   output.appendChild(messageContainer);
   // Add new bot message to conversation and save.
-  conversation.push({ role: 'bot', text: '' });
-  
+  conversation.push({ role: 'assistant', content: '' });
+
   addBlinkingCursor(content);
   // Add height and scroll to the bottom of the output container
   const botMessageElems = output.querySelectorAll('.message.bot');
@@ -213,15 +217,15 @@ function handleBotMessage(data) {
   if (!lastMessageElem) {
     lastMessageElem = createBotMessage();
   }
-  
+
   if (blinkingCursor && blinkingCursor.parentElement === lastMessageElem) {
     blinkingCursor.insertAdjacentText('beforebegin', data);
   } else {
     lastMessageElem.textContent += data;
   }
   // Update last bot message content in the conversation array.
-  if (conversation.length > 0 && conversation[conversation.length - 1].role === 'bot') {
-    conversation[conversation.length - 1].text = lastMessageElem.textContent;
+  if (conversation.length > 0 && conversation[conversation.length - 1].role === 'assistant') {
+    conversation[conversation.length - 1].content = lastMessageElem.textContent;
     saveConversation();
   }
 }
@@ -230,6 +234,15 @@ function handleBotMessageComplete() {
   console.log('Bot message complete.');
   isTyping = false;
   removeBlinkingCursor();
+
+  console.log('Conversation:', conversation.length);
+
+  if (conversation.length === 9 && !dreamCollected) {
+    localStorage.setItem('dreamCollected', 'true');
+    dreamCollected = true;
+    socket.emit('create dream', conversation, uid || 1234);
+    endDreaming();
+  } 
 }
 
 // Append new tokens from the bot as they arrive.
@@ -256,7 +269,7 @@ function appendMessage(role, text) {
   output.appendChild(messageContainer);
   // Persist only if this is a fresh user message.
   if (role === 'user') {
-    conversation.push({ role, text });
+    conversation.push({ role, content: text });
     saveConversation();
   }
   // output.scrollTop = output.scrollHeight;
@@ -275,7 +288,6 @@ function simulateCustomBotMessage(message) {
       currentIndex++;
     } else {
       clearInterval(intervalId);
-      // Optionally notify the client that the simulated stream is complete
       handleBotMessageComplete();
     }
   }, delay);
@@ -306,20 +318,26 @@ function glitchify(input, scale) {
 
 // Helper function to immediately spam the screen with 20 lines of "Remember your dreams"
 // Each line gets progressively more glitchy
-function spamDreams() {
-  let i = 1;
-  const intervalId = setInterval(() => {
-    if (i <= 30) {
-      const scale = i; // increasing glitch scale
-      const glitchedText = glitchify("Remember your dreams", scale);
-      const lineElem = document.createElement('div');
-      lineElem.textContent = glitchedText;
-      output.appendChild(lineElem);
-      output.scrollTop = output.scrollHeight;
-      i++;
-    } else {
-      clearInterval(intervalId);
-    }
-  }, 100);
+function endDreaming() {
+  setTimeout(() => {
+    simulateCustomBotMessage(glitchify("\n\nHello?? Oh no, you're waking up!", 5));
+
+    setTimeout(() => {
+      let i = 1;
+      const intervalId = setInterval(() => {
+        if (i <= 40) {
+          const scale = i <= 10 ? 1 : i - 10; // increasing glitch scale
+          const glitchedText = glitchify("Remember your dreams", scale);
+          const lineElem = document.createElement('div');
+          lineElem.textContent = glitchedText;
+          output.appendChild(lineElem);
+          output.scrollTop = output.scrollHeight;
+          i++;
+        } else {
+          clearInterval(intervalId);
+        }
+      }, 100);
+    }, 5000);
+  }, 5000);
 }
 
