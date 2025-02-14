@@ -1,4 +1,20 @@
 // public/script.ts
+
+const currentVersion = '1.0.0'; // Update this version as needed
+
+// Check for version mismatch and reset localStorage if necessary
+function checkVersion() {
+  const savedVersion = localStorage.getItem('version');
+  if (savedVersion !== currentVersion) {
+    localStorage.clear();
+    localStorage.setItem('version', currentVersion);
+    console.log('Version mismatch detected. Local storage has been reset.');
+  }
+}
+
+// Call checkVersion on page load
+checkVersion();
+
 // Function to get a query parameter by name
 function getQueryParam(name) {
   return new URLSearchParams(window.location.search).get(name);
