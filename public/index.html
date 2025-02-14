@@ -1,25 +1,53 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Console Chat</title>
-    <link rel="stylesheet" href="reset.css" />
-    <link rel="stylesheet" href="style.css" />
-  </head>
-  <body>
-    <div id="console">
-      <div id="output"></div>
-      <div id="input-container">
-        <span class="prompt">></span>
-        <input type="text" id="input" autocomplete="off" autofocus />
-        <!-- Added submit button -->
-        <button id="submit-button" disabled>&rarr; </button>
-      </div>
+
+<head>
+  <!-- Basic Meta -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Open Graph (for iMessage, Facebook, etc.) -->
+  <meta property="og:title" content="YOU?" />
+  <meta property="og:description"
+    content="A voice echoes from the void... It sounds familiar. Can you help it remember?" />
+  <meta property="og:image" content="https://rwedreaming.com/preview-image.png" />
+  <meta property="og:url" content="https://rwedreaming.com" />
+  <meta property="og:type" content="website" />
+
+  <!-- Twitter Card (for Twitter/X) -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="YOU?" />
+  <meta name="twitter:description"
+    content="A voice echoes from the void... It sounds familiar. Can you help it remember?" />
+  <meta name="twitter:image" content="https://rwedreaming.com/preview-image.png" />
+
+  <!-- iOS Safari Pinned Tab -->
+  <link rel="apple-touch-icon" sizes="180x180" href="/preview-image.png">
+  <meta name="apple-mobile-web-app-title" content="YOU?" />
+  <meta name="theme-color" content="#000000">
+  
+  <title>YOU?</title>
+  <link rel="stylesheet" href="reset.css" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <div id="console">
+    <div id="output"></div>
+    <div id="input-container">
+      <span class="prompt">></span>
+      <input type="text" id="input" autocomplete="off" autofocus />
+      <!-- Added submit button -->
+      <button id="submit-button" disabled>&rarr; </button>
     </div>
-    <!-- Socket.io client library -->
-    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js" integrity="sha384-mkQ3/7FUtcGyoppY6bz/PORYoGqOl7/aSUMn2ymDOJcapfS6PHqxhRTMh1RR0Q6+" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jwt-decode@3/build/jwt-decode.min.js"></script>
-    <!-- Include the compiled script.js. If you compile public/script.ts to public/script.js -->
-    <script src="script.js"></script>
-  </body>
+  </div>
+  <!-- Socket.io client library -->
+  <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"
+    integrity="sha384-mkQ3/7FUtcGyoppY6bz/PORYoGqOl7/aSUMn2ymDOJcapfS6PHqxhRTMh1RR0Q6+"
+    crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jwt-decode@3/build/jwt-decode.min.js"></script>
+  <!-- Include the compiled script.js. If you compile public/script.ts to public/script.js -->
+  <script src="script.js"></script>
+</body>
+
 </html>
