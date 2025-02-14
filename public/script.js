@@ -1,6 +1,6 @@
 // public/script.ts
 
-const currentVersion = '1.0.0'; // Update this version as needed
+const currentVersion = '1.0.1'; // Update this version as needed
 
 // Check for version mismatch and reset localStorage if necessary
 function checkVersion() {
@@ -180,7 +180,7 @@ function handleUserInput(input) {
     }, 10000);
     setTimeout(() => {
       const customMessage = "\n\nMaybe you could free us both. Remind me of other places. Other dreams.";
-      simulateCustomBotMessage(customMessage, true);
+      simulateCustomBotMessage(customMessage);
       endDreaming();
     }, 13000);
   } else if (localStorage.getItem('endedDream') === 'true') {
@@ -276,10 +276,9 @@ function handleBotMessage(data) {
     lastMessageElem = createBotMessage();
   }
 
-  if (!blinkingCursor) addBlinkingCursor(lastMessageElem);
-
   if (blinkingCursor && blinkingCursor.parentElement === lastMessageElem) {
     blinkingCursor.insertAdjacentText('beforebegin', data);
+    // lastMessageElem.textContent += data;
   } else {
     lastMessageElem.textContent += data;
   }
@@ -316,8 +315,9 @@ socket.on('bot message complete', () => {
   handleBotMessageComplete();
 });
 
-socket.on('end dream', () => { 
-  simulateCustomBotMessage(glitchify(`Thank you ${name || ""}... I feel like I can finally fade away...`, 5));
+socket.on('end dream', () => {
+  removeBlinkingCursor();
+  simulateCustomBotMessage(glitchify(`Thank you ${name || ""}... I feel like I can finally fade away...`, 4));
   localStorage.setItem('endedDream', 'true');
 });
 
@@ -387,7 +387,7 @@ function glitchify(input, scale) {
 // Each line gets progressively more glitchy
 function endDreaming() {
   setTimeout(() => {
-    simulateCustomBotMessage(glitchify("\n\nHello?? Oh no, you're waking up!", 2));
+    simulateCustomBotMessage(glitchify("\n\nHello?? Oh no, you're waking up!", 5));
 
     setTimeout(() => {
       let i = 1;
@@ -405,6 +405,6 @@ function endDreaming() {
         }
       }, 100);
     }, 5000);
-  }, 5000);
+  }, 3000);
 }
 
