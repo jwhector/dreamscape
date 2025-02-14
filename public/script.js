@@ -111,17 +111,17 @@ window.addEventListener('load', () => {
       simulateCustomBotMessage(customMessage, true);
     }, 2000);
     setTimeout(() => {
-      const customMessage = `\n\nYou're back?\nI was beginning to think you were a dream of my own.`;
+      const customMessage = `\n\nYou're back?\n\nI was beginning to think you were a dream of my own.`;
       simulateCustomBotMessage(customMessage, true);
     }, 4000);
     setTimeout(() => {
-      const customMessage = `\n\nDid you remember to remember?`;
-      simulateCustomBotMessage(customMessage, true);
-    }, 7000);
-    setTimeout(() => {
       const customMessage = `\n\nPlease... tell me of other places. Other dreams.`;
+      simulateCustomBotMessage(customMessage, true);
+    }, 8000);
+    setTimeout(() => {
+      const customMessage = `\n\nDid you remember to remember?`;
       simulateCustomBotMessage(customMessage);
-    }, 9000);
+    }, 11000);
   }
 });
 
@@ -146,6 +146,7 @@ function handleUserInput(input) {
   // Check for "nuke this" command and clear conversation if found.
   if (userMessage.toLowerCase() === "reset") {
     localStorage.clear();
+    localStorage.setItem('version', currentVersion);
     conversation = [];
     output.innerHTML = ""; // Clear the chat output.
     appendMessage('bot', "Conversation reset.");
@@ -386,7 +387,7 @@ function glitchify(input, scale) {
 // Each line gets progressively more glitchy
 function endDreaming() {
   setTimeout(() => {
-    simulateCustomBotMessage(glitchify("\n\nHello?? Oh no, you're waking up!", 5));
+    simulateCustomBotMessage(glitchify("\n\nHello?? Oh no, you're waking up!", 2));
 
     setTimeout(() => {
       let i = 1;
