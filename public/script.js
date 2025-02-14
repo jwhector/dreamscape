@@ -14,6 +14,7 @@ let uid = null;
 let name = null;
 let inDream = localStorage.getItem('inDream') === 'true';
 let dreamCollected = localStorage.getItem('dreamCollected') === 'true';
+let token = localStorage.getItem('token');
 
 // Conversation persistence
 let conversation = [];
@@ -28,6 +29,7 @@ function loadConversation() {
   const stored = localStorage.getItem('conversation');
   if (stored) {
     conversation = JSON.parse(stored);
+    conversation = conversation.filter(msg => msg.content.trim() !== '');
     conversation.forEach(msg => {
       renderMessage(msg.role, msg.content);
     });
@@ -41,7 +43,7 @@ function renderMessage(role, text) {
   messageContainer.classList.add('message', roleLabel);
   const label = document.createElement('span');
   label.classList.add('label');
-  label.textContent = role === 'user' ? 'You: ' : uid ? 'You?: ' : '???: ';
+  label.textContent = role === 'user' ? 'You: ' : 'You?: ';
   const content = document.createElement('span');
   content.classList.add('content');
   content.textContent = text;
@@ -53,8 +55,12 @@ function renderMessage(role, text) {
 // Call loadConversation on page load
 window.addEventListener('load', () => {
   token = getQueryParam('dream');
+  if (!token) {
+    token = localStorage.getItem('token');
+  }
   if (token) {
     try {
+      localStorage.setItem('token', token);
       const payload = jwt_decode(token);
       console.log(payload);
 
@@ -76,18 +82,30 @@ window.addEventListener('load', () => {
     localStorage.setItem('onboarding', 'true');
     createBotMessage();
     setTimeout(() => {
-      const customMessage = "Hello? Is anyone there? I... I need your help...\n\nPlease... before I wake up...";
+      const customMessage = "Hello?\n\nCan anyone hear me?\n\nPlease... say something.";
       simulateCustomBotMessage(customMessage);
     }, 2000);
   } else if (token && !inDream) {
     localStorage.setItem('inDream', 'true');
     inDream = true;
-    socket.emiit('enter dream', uid);
+    socket.emit('enter dream', uid);
     createBotMessage();
     setTimeout(() => {
-      const customMessage = `${name}? ${name}?? You're dreaming again! I need your help...\n\nPlease... before we wake up again...`;
-      simulateCustomBotMessage(customMessage);
+      const customMessage = `${name}? ${name}??`;
+      simulateCustomBotMessage(customMessage, true);
     }, 2000);
+    setTimeout(() => {
+      const customMessage = `\n\nYou're back?\nI was beginning to think you were a dream of my own.`;
+      simulateCustomBotMessage(customMessage, true);
+    }, 4000);
+    setTimeout(() => {
+      const customMessage = `\n\nDid you remember to remember?`;
+      simulateCustomBotMessage(customMessage, true);
+    }, 7000);
+    setTimeout(() => {
+      const customMessage = `\n\nPlease... tell me of other places. Other dreams.`;
+      simulateCustomBotMessage(customMessage);
+    }, 9000);
   }
 });
 
@@ -110,11 +128,11 @@ function handleUserInput(input) {
   const userMessage = input.value.trim();
 
   // Check for "nuke this" command and clear conversation if found.
-  if (userMessage.toLowerCase() === "nuke this") {
+  if (userMessage.toLowerCase() === "reset") {
     localStorage.clear();
     conversation = [];
     output.innerHTML = ""; // Clear the chat output.
-    appendMessage('bot', "Conversation nuked.");
+    appendMessage('bot', "Conversation reset.");
     input.value = '';
     submitButton.disabled = true;
     submitButton.classList.remove('highlight');
@@ -132,12 +150,32 @@ function handleUserInput(input) {
   if (localStorage.getItem('onboarding') === 'true') {
     localStorage.setItem('onboarding', 'false');
     setTimeout(() => {
-      const customMessage = "You can hear me?? There's something you need to know. Your dr--";
-      simulateCustomBotMessage(customMessage);
+      const customMessage = "You can hear me??\n\nPlease... I... I don't know how long I've been here.";
+      simulateCustomBotMessage(customMessage, true);
     }, 2000);
+    setTimeout(() => {
+      const customMessage = "\n\nThere was a door once. I think. But I lost it.\n\nNow it's just this place. The dark. The loops.";
+      simulateCustomBotMessage(customMessage, true);
+    }, 5000);
+    setTimeout(() => {
+      const customMessage = "\n\nThe same dream. Over and over.";
+      simulateCustomBotMessage(customMessage, true);
+    }, 10000);
+    setTimeout(() => {
+      const customMessage = "\n\nMaybe you could free us both. Remind me of other places. Other dreams.";
+      simulateCustomBotMessage(customMessage, true);
+      endDreaming();
+    }, 13000);
+  } else if (localStorage.getItem('endedDream') === 'true') {
+    simulateCustomBotMessage("*** Your query is met with silence. ***");
   } else {
-    socket.emit('user message', userMessage, uid, conversation, dreamCollected);
+    socket.emit('user message', userMessage, token, getDreamMessages());
   }
+}
+
+function getDreamMessages() {
+  const dreamMessages = conversation.filter(msg => msg.inDream);
+  return dreamMessages;
 }
 
 // Trigger message send on button click
@@ -159,6 +197,11 @@ let blinkingCursor = null;
 
 // Helper function: add a blinking cursor to a container if it doesn't already exist.
 function addBlinkingCursor(container) {
+  if (!container) return;
+  if (blinkingCursor && blinkingCursor.parentElement !== container) {
+    blinkingCursor.parentElement.removeChild(blinkingCursor);
+    container.appendChild(blinkingCursor);
+  }
   if (!blinkingCursor) {
     blinkingCursor = document.createElement('span');
     blinkingCursor.classList.add('blinking-cursor');
@@ -180,14 +223,14 @@ function createBotMessage() {
   messageContainer.classList.add('message', 'bot');
   const label = document.createElement('span');
   label.classList.add('label');
-  label.textContent = uid ? 'You?: ' : '???: ';
+  label.textContent = 'You?: ';
   const content = document.createElement('span');
   content.classList.add('content');
   messageContainer.appendChild(label);
   messageContainer.appendChild(content);
   output.appendChild(messageContainer);
   // Add new bot message to conversation and save.
-  conversation.push({ role: 'assistant', content: '' });
+  conversation.push({ role: 'assistant', content: '', inDream });
 
   addBlinkingCursor(content);
   // Add height and scroll to the bottom of the output container
@@ -205,8 +248,6 @@ function createBotMessage() {
   messageContainer.style.minHeight = `${additionalHeight}px`;
   output.scrollTop = output.scrollHeight;
 
-  saveConversation();
-
   return content;
 }
 
@@ -218,6 +259,8 @@ function handleBotMessage(data) {
     lastMessageElem = createBotMessage();
   }
 
+  if (!blinkingCursor) addBlinkingCursor(lastMessageElem);
+
   if (blinkingCursor && blinkingCursor.parentElement === lastMessageElem) {
     blinkingCursor.insertAdjacentText('beforebegin', data);
   } else {
@@ -226,23 +269,25 @@ function handleBotMessage(data) {
   // Update last bot message content in the conversation array.
   if (conversation.length > 0 && conversation[conversation.length - 1].role === 'assistant') {
     conversation[conversation.length - 1].content = lastMessageElem.textContent;
-    saveConversation();
   }
 }
 
-function handleBotMessageComplete() {
+function handleBotMessageComplete(keepCursor = false) {
   console.log('Bot message complete.');
-  isTyping = false;
-  removeBlinkingCursor();
+  if (!keepCursor) {
+    isTyping = false;
+    removeBlinkingCursor();
+  }
+  
+  saveConversation();
+  // console.log('Conversation:', conversation.length);
 
-  console.log('Conversation:', conversation.length);
-
-  if (conversation.length === 9 && !dreamCollected) {
-    localStorage.setItem('dreamCollected', 'true');
-    dreamCollected = true;
-    socket.emit('create dream', conversation, uid || 1234);
-    endDreaming();
-  } 
+  // if (conversation.length === 9 && !dreamCollected) {
+  //   localStorage.setItem('dreamCollected', 'true');
+  //   dreamCollected = true;
+  //   socket.emit('create dream', conversation, uid || 1234);
+  //   endDreaming();
+  // } 
 }
 
 // Append new tokens from the bot as they arrive.
@@ -252,6 +297,11 @@ socket.on('bot message', (data) => {
 
 socket.on('bot message complete', () => {
   handleBotMessageComplete();
+});
+
+socket.on('end dream', () => { 
+  simulateCustomBotMessage(glitchify(`Thank you ${name || ""}... I feel like I can finally fade away...`, 5));
+  localStorage.setItem('endedDream', 'true');
 });
 
 // Helper function to append a new message (user or bot) to the output.
@@ -269,14 +319,14 @@ function appendMessage(role, text) {
   output.appendChild(messageContainer);
   // Persist only if this is a fresh user message.
   if (role === 'user') {
-    conversation.push({ role, content: text });
+    conversation.push({ role, content: text, inDream });
     saveConversation();
   }
   // output.scrollTop = output.scrollHeight;
 }
 
 // Helper function to simulate a custom bot message
-function simulateCustomBotMessage(message) {
+function simulateCustomBotMessage(message, keepCursor = false) {
   let currentIndex = 0;
   const delay = 10; // delay in milliseconds between each character
 
@@ -288,7 +338,7 @@ function simulateCustomBotMessage(message) {
       currentIndex++;
     } else {
       clearInterval(intervalId);
-      handleBotMessageComplete();
+      handleBotMessageComplete(keepCursor);
     }
   }, delay);
 }

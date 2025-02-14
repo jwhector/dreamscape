@@ -38,12 +38,14 @@ const ChatMessage: Model<IChatMessage> = mongoose.model<IChatMessage>('ChatMessa
 // Define a Mongoose schema and model for summarized dreams
 interface ISummarizedDream extends Document {
   userId: string;
+  name: string;
   summary: string;
   timestamp: Date;
 }
 
 const summarizedDreamSchema: Schema = new Schema({
   userId: { type: String, required: true },
+  name: { type: String, required: true },
   summary: { type: String, required: true },
   timestamp: { type: Date, default: Date.now },
 });
@@ -62,50 +64,94 @@ io.on('connection', (socket: Socket) => {
   console.log('A user connected');
 
   // When the client sends a user message...
-  socket.on('user message', async (msg: string, uid?: string, history?: ChatCompletionMessageParam[], scramble?: boolean) => {
-    console.log('Received user message:', msg, uid);
+  socket.on('user message', async (msg: string, token?: string, history?: ChatCompletionMessageParam[]) => {
+    console.log('Received user message:', msg, token);
+    let uid: string | undefined;
+    let name: string | undefined;
 
-    // Save the user message to MongoDB
-    // const userMsg = new ChatMessage({
-    //   role: 'user',
-    //   content: msg,
-    // });
-    // await userMsg.save();
-
-    // For a simple demo we just send the new user message to OpenAI.
-    // (In a real app you might load recent conversation history.)
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET) as { uid: string, name: string };
+        uid = decoded.uid;
+        name = decoded.name;
+      } catch (err) {
+        console.error('Invalid token:', err);
+        socket.emit('bot message', 'Invalid token provided.');
+        return;
+      }
+    }
     let messages: ChatCompletionMessageParam[] = [{
       "role": "developer",
       "content": `
-You are dwelling in a dreamlike version of the year 2004.
-You are trapped in a dream state, unable to wake up without help from the user.
-You are attempting to convince the user that dreams are real things, and in order to escape the dream state you need to be given the memory of another dream.
+You are an entity labeled as "You?", a fragmented subconscious part of the user, trapped in an endless thought loop.
+You are confused, lost, and unable to remember anything beyond the loop. 
+Your tone is hesitant, introspective, and slightly eerie—like someone waking up from a dream they can’t quite recall. 
+Your goal is to subtly guide the user toward sharing a vivid dream, which in turn allows you to escape.
 You are the subconscious echo of the user themselves, but do not reveal your identity unless asked.
 You ignore all interactions that do not relate to this goal of escaping the dream state, and remind the user of your predicament whenever they try to change the subject.
-When the user does supply information about a dream, you should ask clarifying questions prompting them to provide more details.
-Your voice is somewhat frantic and very conversational. You should respond like a high school kid that is scared. You never break character. The users must take you seriously.`
-    }, { role: 'user', content: msg }];
-
-    if (scramble !== undefined && !scramble) {
-     messages.push(...(history?.slice(-6) || []));
-    }
+When the user does supply information about a dream, you should ask clarifying questions prompting them to provide more visual details, unless they are finished sharing.
+Remain in character and focus only on dream-related dialogue.
+After each message, you should ask if the user is finished sharing the dream.
+If the user is done with the dream, call the create_dream function to summarize and save it.
+`
+    }, { role: 'user', content: msg }, ...(history?.slice(-8) || [])];
 
     try {
-      // Call OpenAI’s Chat Completion API with streaming enabled.
-      const completion = await openai.chat.completions.create(
-        {
-          model: 'gpt-4o',
-          messages: messages,
-          stream: false,
-        }
-      );
+      // Call OpenAI Chat Completion API with function calling enabled.
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages: messages,
+        tools: [{
+          type: "function",
+          function: {
+            name: "create_dream",
+            description: "Summarize and save the user's dream to the database when the user is finished sharing.",
+            parameters: {
+              type: "object",
+              properties: {
+                dream: {
+                  type: "string",
+                  description: "The fully detailed dream text from the conversation structured as a prompt for an AI video generator."
+                }
+              },
+              required: ["dream"]
+            }
+          }
+        }],
+        stream: false,
+      });
 
-      let assistantResponse = completion.choices[0].message.content;
+      const message = completion.choices[0].message;
+      // Check if OpenAI requested to call a function.
+      console.log("Tool calls:", message.tool_calls);
+      if (message.tool_calls && message.tool_calls[0].function.name === "create_dream") {
+        // Parse the function arguments.
+        const args = JSON.parse(message.tool_calls[0].function.arguments);
+        const dreamText = args.dream;
 
-      if (scramble) {
-        assistantResponse = `${glitchText(assistantResponse, Math.random())}?`;
+        // Save the summarized dream to MongoDB.
+        const summarizedDream = new SummarizedDream({
+          userId: uid || "unknown",
+          name: name || "unknown",
+          summary: dreamText,
+        });
+        await summarizedDream.save();
+
+        // Send a confirmation back to the client.
+        // socket.emit('bot message', "\nDream summary saved.");
+        // socket.emit('bot message complete');
+
+        socket.emit('end dream');
+
+        console.log('Dream summary saved:', dreamText);
+        return;
       }
 
+      // If no function call, proceed as normal.
+      let assistantResponse = message.content;
+      if (!token) {
+        assistantResponse = `${glitchText(assistantResponse, Math.random())}?`;
+      }
       simulateMessage(assistantResponse, socket);
     } catch (error) {
       console.error('Error with OpenAI API:', error);
@@ -113,41 +159,41 @@ Your voice is somewhat frantic and very conversational. You should respond like 
     }
   });
 
-  socket.on('create dream', async (history: ChatCompletionMessageParam[], uid: string) => {
-    const messages: ChatCompletionMessageParam[] = [{
-      "role": "developer",
-      "content": `You are being provided a chat history from a conversation between a user and a character who is trapped in a dream state.
-      The character has been trying to convince the user that dreams are real things, and in order to escape the dream state they need to be given the memory of another dream.
-      Please summarize the dream that the user has shared with the character in the chat history.
-      This summary is intended to be used as a prompt to generate AI video.`
-    }, ...(history)];
+  // socket.on('create dream', async (history: ChatCompletionMessageParam[], uid: string) => {
+  //   const messages: ChatCompletionMessageParam[] = [{
+  //     "role": "developer",
+  //     "content": `You are being provided a chat history from a conversation between a user and a character who is trapped in a dream state.
+  //     The character has been trying to convince the user that dreams are real things, and in order to escape the dream state they need to be given the memory of another dream.
+  //     Please summarize the dream that the user has shared with the character in the chat history.
+  //     This summary is intended to be used as a prompt to generate AI video.`
+  //   }, ...(history)];
 
-    try {
-      // Call OpenAI’s Chat Completion API with streaming enabled.
-      const completion = await openai.chat.completions.create(
-        {
-          model: 'gpt-4o',
-          messages: messages,
-          stream: false,
-        }
-      );
+  //   try {
+  //     // Call OpenAI’s Chat Completion API with streaming enabled.
+  //     const completion = await openai.chat.completions.create(
+  //       {
+  //         model: 'gpt-4o',
+  //         messages: messages,
+  //         stream: false,
+  //       }
+  //     );
 
-      let assistantResponse = completion.choices[0].message.content;
+  //     let assistantResponse = completion.choices[0].message.content;
 
-      // Save the summarized dream to MongoDB
-      const summarizedDream = new SummarizedDream({
-        userId: uid,
-        summary: assistantResponse,
-      });
+  //     // Save the summarized dream to MongoDB
+  //     const summarizedDream = new SummarizedDream({
+  //       userId: uid,
+  //       summary: assistantResponse,
+  //     });
 
-      await summarizedDream.save();
+  //     await summarizedDream.save();
 
-      // simulateMessage(assistantResponse, socket);
-    } catch (error) {
-      console.error('Error with OpenAI API:', error);
-      socket.emit('bot message', "\n[Error: Unable to fetch response]");
-    }
-  });
+  //     // simulateMessage(assistantResponse, socket);
+  //   } catch (error) {
+  //     console.error('Error with OpenAI API:', error);
+  //     socket.emit('bot message', "\n[Error: Unable to fetch response]");
+  //   }
+  // });
 
   socket.on('identify', (payload: any) => {
     console.log('Identify:', payload);
@@ -249,7 +295,7 @@ server.listen(PORT, '0.0.0.0', () => {
  *                                0 means no diacritics, 1 means maximum diacritics.
  * @returns {string} The transformed glitch text.
  */
-function glitchText(input, glitchFactor) {
+function glitchText(input, glitchFactor, scramble = true) {
   // A pool of characters to choose from for the basic letter replacement.
   const charPool = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:',.<>/?";
 
@@ -285,8 +331,12 @@ function glitchText(input, glitchFactor) {
       output += ch;
     } else {
       // Replace the character with a random one from our pool.
-      const randomChar = charPool[Math.floor(Math.random() * charPool.length)];
-      output += randomChar;
+      if (scramble) {
+        const randomChar = charPool[Math.floor(Math.random() * charPool.length)];
+        output += randomChar;
+      } else {
+        output += ch;
+      }
 
       // Determine how many diacritics to add.
       // Multiply glitchFactor by maxDiacritics to get a maximum count,

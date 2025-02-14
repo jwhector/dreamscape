@@ -19,6 +19,7 @@
     "typescript": "^5.7.3"
   },
   "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.8",
     "browser-sync": "^3.0.3",
     "concurrently": "^9.1.2",
     "nodemon": "^3.1.9",
