@@ -1,6 +1,6 @@
 // public/script.ts
 
-const currentVersion = '1.0.1'; // Update this version as needed
+const currentVersion = '1.0.2';
 
 // Check for version mismatch and reset localStorage if necessary
 function checkVersion() {
@@ -101,8 +101,9 @@ window.addEventListener('load', () => {
       const customMessage = "Hello?\n\nCan anyone hear me?\n\nPlease... say something.";
       simulateCustomBotMessage(customMessage);
     }, 2000);
-  } else if (token && !inDream) {
+  } else if (token && conversation.length === 0) {
     localStorage.setItem('inDream', 'true');
+    localStorage.setItem('dreamOnboarding', 'true');
     inDream = true;
     socket.emit('enter dream', uid);
     createBotMessage();
@@ -111,17 +112,25 @@ window.addEventListener('load', () => {
       simulateCustomBotMessage(customMessage, true);
     }, 2000);
     setTimeout(() => {
-      const customMessage = `\n\nYou're back?\n\nI was beginning to think you were a dream of my own.`;
+      const customMessage = "\n\nCan you hear me??";
       simulateCustomBotMessage(customMessage, true);
     }, 4000);
     setTimeout(() => {
-      const customMessage = `\n\nPlease... tell me of other places. Other dreams.`;
-      simulateCustomBotMessage(customMessage, true);
-    }, 8000);
-    setTimeout(() => {
-      const customMessage = `\n\nDid you remember to remember?`;
+      const customMessage = "\n\nPlease, say something.";
       simulateCustomBotMessage(customMessage);
-    }, 11000);
+    }, 6000);
+    // setTimeout(() => {
+    //   const customMessage = `\n\nYou're back?\n\nI was beginning to think you were a dream of my own.`;
+    //   simulateCustomBotMessage(customMessage, true);
+    // }, 4000);
+    // setTimeout(() => {
+    //   const customMessage = `\n\nPlease... tell me of other places. Other dreams.`;
+    //   simulateCustomBotMessage(customMessage, true);
+    // }, 8000);
+    // setTimeout(() => {
+    //   const customMessage = `\n\nDid you remember to remember?`;
+    //   simulateCustomBotMessage(customMessage);
+    // }, 11000);
   }
 });
 
@@ -183,6 +192,28 @@ function handleUserInput(input) {
       simulateCustomBotMessage(customMessage);
       endDreaming();
     }, 13000);
+  } else if (localStorage.getItem('dreamOnboarding') === 'true') {
+    localStorage.setItem('dreamOnboarding', 'false');
+    setTimeout(() => {
+      const customMessage = "You can hear me??\n\nPlease... I... I don't know how long I've been here.";
+      simulateCustomBotMessage(customMessage, true);
+    }, 2000);
+    setTimeout(() => {
+      const customMessage = "\n\nThere was a door once. I think. But I lost it.\n\nNow it's just this place. The dark. Endless loops.";
+      simulateCustomBotMessage(customMessage, true);
+    }, 5000);
+    setTimeout(() => {
+      const customMessage = "\n\nThe same dream. Over and over.";
+      simulateCustomBotMessage(customMessage, true);
+    }, 10000);
+    setTimeout(() => {
+      const customMessage = "\n\nMaybe you could free us both. Remind me of other places. Other dreams.";
+      simulateCustomBotMessage(customMessage);
+    }, 13000);
+    setTimeout(() => {
+      const customMessage = "\n\nPlease, tell me you remember a dream...";
+      simulateCustomBotMessage(customMessage);
+    }, 16000);
   } else if (localStorage.getItem('endedDream') === 'true') {
     simulateCustomBotMessage("*** Your query is met with silence. ***");
   } else {
@@ -293,9 +324,9 @@ function handleBotMessageComplete(keepCursor = false) {
   if (!keepCursor) {
     isTyping = false;
     removeBlinkingCursor();
+    saveConversation();
   }
-  
-  saveConversation();
+
   // console.log('Conversation:', conversation.length);
 
   // if (conversation.length === 9 && !dreamCollected) {
@@ -317,7 +348,7 @@ socket.on('bot message complete', () => {
 
 socket.on('end dream', () => {
   removeBlinkingCursor();
-  simulateCustomBotMessage(glitchify(`Thank you ${name || ""}... I feel like I can finally fade away...`, 4));
+  simulateCustomBotMessage(glitchify(`Thank you ${name || ""}... I see it... I feel like I can finally fade away...`, 4));
   localStorage.setItem('endedDream', 'true');
 });
 

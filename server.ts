@@ -39,6 +39,7 @@ const ChatMessage: Model<IChatMessage> = mongoose.model<IChatMessage>('ChatMessa
 interface ISummarizedDream extends Document {
   userId: string;
   name: string;
+  lastName?: string;
   summary: string;
   timestamp: Date;
 }
@@ -46,6 +47,7 @@ interface ISummarizedDream extends Document {
 const summarizedDreamSchema: Schema = new Schema({
   userId: { type: String, required: true },
   name: { type: String, required: true },
+  lastName: { type: String },
   summary: { type: String, required: true },
   timestamp: { type: Date, default: Date.now },
 });
@@ -68,12 +70,14 @@ io.on('connection', (socket: Socket) => {
     console.log('Received user message:', msg, token);
     let uid: string | undefined;
     let name: string | undefined;
+    let lastName: string | undefined;
 
     if (token) {
       try {
-        const decoded = jwt.verify(token, JWT_SECRET) as { uid: string, name: string };
+        const decoded = jwt.verify(token, JWT_SECRET) as { uid: string, name: string, lastName?: string };
         uid = decoded.uid;
         name = decoded.name;
+        lastName = decoded.lastName;
       } catch (err) {
         console.error('Invalid token:', err);
         socket.emit('bot message', 'Invalid token provided.');
@@ -133,6 +137,7 @@ If the user is done with the dream, call the create_dream function to summarize 
         const summarizedDream = new SummarizedDream({
           userId: uid || "unknown",
           name: name || "unknown",
+          lastName: lastName || "unknown",
           summary: dreamText,
         });
         await summarizedDream.save();
