@@ -71,9 +71,14 @@ function renderMessage(role, text) {
 // Call loadConversation on page load
 window.addEventListener('load', () => {
   token = getQueryParam('dream');
-  if (!token) {
-    token = localStorage.getItem('token');
+  const storedToken = localStorage.getItem('token');
+  
+  if (token && storedToken !== token) {
+    localStorage.clear();
+  } else if (storedToken) {
+    token = storedToken;
   }
+
   if (token) {
     try {
       localStorage.setItem('token', token);

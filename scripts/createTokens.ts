@@ -23,7 +23,7 @@ function generateJWTs(jsonInput: string) {
           name: payload.name, 
           lastName: payload.lastName, 
           token,
-          url: `http://rwedreaming.com/?dream=${encodeURIComponent(token)}`
+          url: `http://www.rwedreaming.com/?dream=${encodeURIComponent(token)}`
         };
     });
 }
