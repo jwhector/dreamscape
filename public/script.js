@@ -180,7 +180,6 @@ function handleUserInput(input) {
   createBotMessage();
 
   if (localStorage.getItem('onboarding') === 'true') {
-    localStorage.setItem('onboarding', 'false');
     setTimeout(() => {
       const customMessage = "You can hear me??\n\nPlease... I... I don't know how long I've been here.";
       simulateCustomBotMessage(customMessage, true);
@@ -198,8 +197,10 @@ function handleUserInput(input) {
       simulateCustomBotMessage(customMessage);
       endDreaming();
     }, 13000);
+    setTimeout(() => {
+      localStorage.setItem('onboarding', 'false');
+    }, 14000);
   } else if (localStorage.getItem('dreamOnboarding') === 'true') {
-    localStorage.setItem('dreamOnboarding', 'false');
     setTimeout(() => {
       const customMessage = "You can hear me??\n\nPlease... I... I don't know how long I've been here.";
       simulateCustomBotMessage(customMessage, true);
@@ -220,6 +221,9 @@ function handleUserInput(input) {
       const customMessage = "\n\nPlease, tell me you remember a dream...";
       simulateCustomBotMessage(customMessage);
     }, 16000);
+    setTimeout(() => {
+      localStorage.setItem('dreamOnboarding', 'false');
+    }, 18000);
   } else if (localStorage.getItem('endedDream') === 'true') {
     simulateCustomBotMessage("*** Your query is met with silence. ***");
   } else {
