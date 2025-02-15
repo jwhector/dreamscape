@@ -73,8 +73,9 @@ window.addEventListener('load', () => {
   token = getQueryParam('dream');
   const storedToken = localStorage.getItem('token');
   
-  if (token && storedToken !== token) {
+  if (token && storedToken && storedToken !== token) {
     localStorage.clear();
+    console.log('Token mismatch detected. Local storage has been reset.');
   } else if (storedToken) {
     token = storedToken;
   }
@@ -213,7 +214,7 @@ function handleUserInput(input) {
     }, 10000);
     setTimeout(() => {
       const customMessage = "\n\nMaybe you could free us both. Remind me of other places. Other dreams.";
-      simulateCustomBotMessage(customMessage);
+      simulateCustomBotMessage(customMessage, true);
     }, 13000);
     setTimeout(() => {
       const customMessage = "\n\nPlease, tell me you remember a dream...";
